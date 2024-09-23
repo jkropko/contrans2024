@@ -22,12 +22,14 @@ plotly = "==5.24.0"
 dash = "==2.18.0"
 dash-bootstrap-components = "==1.6.0"
 scikit-learn = "==1.5.1"
+jupyter = "==1.1.1"
 jupyterlab = "==4.2.5"
-psycopg = {extras = ["pool", "binary"], version = "==3.2.1"}
+psycopg = {extras = ["binary", "pool"], version = "==3.2.1"}
 nbconvert = {extras = ["webpdf"], version = "*"}
+ipykernel = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.8"
-python_full_version = "3.8.19"
+python_version = "3.12"
+python_full_version = "3.12.5"
