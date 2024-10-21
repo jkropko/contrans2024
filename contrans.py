@@ -175,3 +175,14 @@ class contrans:
                      right_on=['name2', 'DistIDRunFor'],
                      how = 'inner')
                 return crosswalk
+        
+        def terms_df(self, members):
+                termsDF = pd.DataFrame()
+                for index, row in members.iterrows():
+                        bioguide_id = row['bioguideId']
+                        terms = row['terms.item']
+                        df = pd.DataFrame.from_records(terms)
+                        df['bioguideId'] = bioguide_id
+                        termsDF = pd.concat([termsDF, df])
+                members = members.drop('terms.item', axis=1)
+                return termsDF, members
