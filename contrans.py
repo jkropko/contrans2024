@@ -173,9 +173,9 @@ class contrans:
                 crosswalk = pd.merge(members, cands, 
                      left_on=['name2', 'DistIDRunFor'],
                      right_on=['name2', 'DistIDRunFor'],
-                     how = 'inner')
+                     how = 'left')
                 return crosswalk
-        
+
         def terms_df(self, members):
                 termsDF = pd.DataFrame()
                 for index, row in members.iterrows():
