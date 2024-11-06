@@ -257,3 +257,34 @@ class contrans:
                                 'float64': 'float'}
                 dt['dtype'] = dt['dtype'].replace(replace_map)
                 return dt.to_string(index=False, header=False)
+        
+        ### Analyses
+        def make_agreement_df(self, bioguide_id, engine):
+                myquery = f'''
+                SELECT icpsr
+                FROM members m
+                WHERE bioguideid = {bioguide_id}
+                '''
+                icpsr = int(pd.read_sql_query(myquery, con=engine)['icpsr'][0])
+                myquery = f'''
+                SELECT m.name, m.partyname, m.state, m.district, v.agree
+                FROM members m
+                INNER JOIN (
+                SELECT
+                        a.icpsr AS icpsr1,
+                        b.icpsr AS icpsr2,
+                        AVG(CAST((a.cast_code = b.cast_code) AS INT)) AS agree
+                        FROM votes a
+                INNER JOIN votes b
+                        ON a.rollnumber = b.rollnumber
+                        AND a.chamber = b.chamber
+                WHERE a.icpsr={icpsr} AND b.icpsr!={icpsr}
+                GROUP BY icpsr1, icpsr2
+                ORDER BY agree DESC
+                ) v
+                ON CAST(m.icpsr AS INT) = v.icpsr2
+                WHERE m.icpsr IS NOT NULL
+                ORDER BY v.agree DESC
+                '''
+                df = pd.read_sql_query(myquery, con=engine)
+                return df.head(10), df.tail(10)
