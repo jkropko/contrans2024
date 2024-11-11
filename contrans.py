@@ -210,7 +210,13 @@ class contrans:
                 engine = create_engine(f'postgresql+psycopg://{user}:{pw}@{host}:{port}/contrans')
                 return dbserver, engine
                 
-
+        def connect_to_mongo(self,from_scratch=False):
+            myclient = pymongo.MongoClient(f"mongodb://{self.MONGO_INITDB_ROOT_USERNAME}:{self.MONGO_INITDB_ROOT_PASSWORD}@localhost:27017/")
+            mongo_contrans = myclient["contrans"]
+            collist = mongo_contrans.list_collection_names()
+            if from_scratch and 'bills' in collist:
+                    mongo_contrans.bills.drop()
+            return mongo_contrans['bills']
 
         ### Methods for building the 3NF relational DB tables
 
@@ -246,9 +252,6 @@ class contrans:
                              index=False, 
                              chunksize = 1000, 
                              if_exists='replace')       
-                 
-        def make_agreement_df(self):
-                return self
         
         def dbml_helper(self, data):
                 dt = data.dtypes.reset_index().rename({0:'dtype'}, axis=1)
