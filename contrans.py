@@ -5,6 +5,8 @@ import dotenv
 import requests
 import json
 import psycopg
+import pymongo
+from bson.json_util import dumps, loads
 from sqlalchemy import create_engine
 from bs4 import BeautifulSoup
 
@@ -89,7 +91,7 @@ class contrans:
                         j = j + 250
 
                 #bio_df = bio_df[['name', 'state', 'district', 'partyName', 'bioguideId']]
-                return bio_df
+                return bio_df.reset_index(drop=True)
 
         
         def get_bioguide(self, name, state=None, district=None):
@@ -110,7 +112,7 @@ class contrans:
                 
                 return members.reset_index(drop=True)
 
-        def get_sponsoredlegislation(self, bioguideid):
+        def get_sponsoredlegislation(self, bioguideid, congress=118):
 
                 params = {'api_key': self.congresskey,
                           'limit': 1} 
@@ -133,6 +135,9 @@ class contrans:
                         records = r.json()['sponsoredLegislation']
                         bills_list = bills_list + records
                         j = j + 250
+
+                bills_list = [x for x in bills_list if x['congress']==congress]        
+                bills_list = [x for x in bills_list if "/bill" in x['url']]
 
                 return bills_list
         
@@ -210,7 +215,7 @@ class contrans:
                 engine = create_engine(f'postgresql+psycopg://{user}:{pw}@{host}:{port}/contrans')
                 return dbserver, engine
                 
-        def connect_to_mongo(self,from_scratch=False):
+        def connect_to_mongo(self, from_scratch=False):
             myclient = pymongo.MongoClient(f"mongodb://{self.MONGO_INITDB_ROOT_USERNAME}:{self.MONGO_INITDB_ROOT_PASSWORD}@localhost:27017/")
             mongo_contrans = myclient["contrans"]
             collist = mongo_contrans.list_collection_names()
@@ -218,9 +223,34 @@ class contrans:
                     mongo_contrans.bills.drop()
             return mongo_contrans['bills']
 
-        def upload_to_mongo(self, mongo_bills, bioguides):
-              bill_list= self.get_sponsoredlegislation(bioguideids)
-              mongo_bills.insert_many(bill_list)
+        def upload_one_member_to_mongo(self, mongo_bills, bioguide):
+              bill_list= self.get_sponsoredlegislation(bioguide)
+              bill_list_with_text = [self.get_billdata(x['url']) for x in bill_list]
+              mongo_bills.insert_many(bill_list_with_text)
+
+        def upload_many_members_to_mongo(self, mongo_bills, members):
+                for m in members:
+                        status = f'Now uploading bills from {m} to MongoDB'
+                        print(status)
+                        self.upload_one_member_to_mongo(mongo_bills, m)
+        
+        def query_mongo(self, collection, rows, columns):
+                cursor = collection.find(rows, columns)
+                result_dumps = dumps(cursor)
+                result_loads = loads(result_dumps)
+                result_df = pd.DataFrame.from_records(result_loads)
+                return result_df       
+        
+        def query_mongo_searchengine(self, collection, keytosearch, searchterms, columns={}):
+
+                collection.create_index([(keytosearch, 'text')])
+
+                cursor = collection.find({'$text': {'$search': searchterms, 
+                                                    '$caseSensitive': False}}, columns)
+                result_dumps = dumps(cursor)
+                result_loads = loads(result_dumps)
+                result_df = pd.DataFrame.from_records(result_loads)
+                return result_df       
 
         ### Methods for building the 3NF relational DB tables
 
