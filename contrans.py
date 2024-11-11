@@ -218,6 +218,10 @@ class contrans:
                     mongo_contrans.bills.drop()
             return mongo_contrans['bills']
 
+        def upload_to_mongo(self, mongo_bills, bioguides):
+              bill_list= self.get_sponsoredlegislation(bioguideids)
+              mongo_bills.insert_many(bill_list)
+
         ### Methods for building the 3NF relational DB tables
 
         def make_members_df(self, members, ideology, engine):
