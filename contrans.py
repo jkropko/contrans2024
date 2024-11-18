@@ -334,6 +334,12 @@ class contrans:
                 return df.head(10), df.tail(10)
         
         def plot_ideology(self, bioguide_id):
+                server, engine = self.connect_to_postgres(self.postgrespassword)
+                myquery = '''
+                SELECT bioguideid, district, name, partyname, state, nominate_dim1
+                FROM members
+                '''
+                ideo = pd.read_sql_query(myquery, con=engine)
                 member_ideo = ideo.query(f"bioguideid == {bioguide_id}").reset_index(drop=True)
                 fig = px.histogram(ideo, x='nominate_dim1', 
                                 nbins=60, 
