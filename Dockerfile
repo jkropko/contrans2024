@@ -11,6 +11,7 @@ COPY requirements.txt requirements.txt
 
 # Install the dependencies using pip
 RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN python -m nltk.downloader stopwords punkt wordnet
 
 # Expose the port for the dashboard
 EXPOSE 8050
