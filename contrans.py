@@ -22,6 +22,7 @@ class contrans:
                 self.congresskey = os.getenv('congresskey')
                 self.newskey = os.getenv('newskey')
                 self.POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD') 
+                self.openaikey = os.getenv('openaikey')
                 self.MONGO_INITDB_ROOT_USERNAME = os.getenv('MONGO_INITDB_ROOT_USERNAME')
                 self.MONGO_INITDB_ROOT_PASSWORD = os.getenv('MONGO_INITDB_ROOT_PASSWORD')
                 r = requests.get('https://httpbin.org/user-agent')
@@ -47,6 +48,7 @@ class contrans:
                         "Puerto Rico": "PR","United States Minor Outlying Islands": "UM",
                         "Virgin Islands": "VI"
                         }
+                
 
 
         def get_votes(self):
@@ -360,6 +362,18 @@ class contrans:
                                 font=dict(size=12, color="red"))
                 return fig
 
+        def charwords(self, bioguide_id, host='localhost'):
+                server, engine = self.connect_to_postgres(self.POSTGRES_PASSWORD, host=host)
+                myquery = f'''
+                        SELECT *
+                        FROM charwords
+                        WHERE sponsor_id = '{bioguide_id}'
+                '''
+                df = pd.read_sql_query(myquery, con=engine)
+                df['tf_idf'] = df['tf_idf'].astype(float).round(3)
+                df = df[['word', 'tf_idf']]
+                return df
+        
         def get_summary_text(self, input_text, sentences_count=3):
                 parser = PlaintextParser.from_string(input_text, Tokenizer("english"))
                 summarizer = LsaSummarizer()
@@ -369,17 +383,34 @@ class contrans:
                         sumtext = sumtext + str(sentence)
                 return sumtext     
 
-        def summarize_news(self, bioguide_id, engine):
+        def get_news(self, bioguide_id, host='localhost'):
+           server, engine = self.connect_to_postgres(self.POSTGRES_PASSWORD, host=host)
            myquery = f'''
                         SELECT *
                         FROM members
                         WHERE bioguideid = '{bioguide_id}'
                 '''
            df = pd.read_sql_query(myquery, con=engine)
-           news_query = df['firstname'][0] + ' ' + df['lastname'][0] + ' ' + df['partyname'][0] + ' ' + df['state'][0] + ' ' + df['chamber'][0] + ' Congress'
+           news_query = df['firstname'][0] + ' ' + df['lastname'][0] + ' ' + df['partyname'][0] + ' ' + df['state'][0] + ' ' + ' Congress'
            r = requests.get('https://newsapi.org/v2/everything',
                             params={'q': news_query, 'apiKey': self.newskey},
                             headers={'User-Agent': self.useragent})
            return r
+        
+        def summarize_news(self, bioguide_id, host='localhost'):
+                r = self.get_news(bioguide_id, host=host)
+                headlines = [x['title'] for x in r.json()['articles']]
+                content = f'Generate a summary of the news involving a member of the United States Congress who was mentioned in articles with these headlines: {headlines}'
+                headers = {'User-Agent':self.useragent,
+                           'Content-Type': 'application/json',
+                           'Authorization': 'Bearer ' + self.openaikey}
+                data = {'model': 'gpt-4o-mini',
+                        "messages": [{"role": "user", "content": content}]}
+                url = 'https://api.openai.com/v1/chat/completions'
+                r = requests.post(url, headers=headers, data=json.dumps(data))
+                gpt_response = json.loads(r.text)['choices'][0]['message']['content']
+                return gpt_response
+
+
 
                          

@@ -60,6 +60,12 @@ Table votes as V {
     cast_code     int
     prob   float
 }
+Table charwords as C {
+  word	varchar [pk]
+  tf_idf	float
+  sponsor_id varchar [pk]
+}
 
 Ref: M.bioguideid < T.bioguideid  
 Ref: M.icpsr < V.icpsr
+Ref: M.bioguideid < C.sponsor_id
